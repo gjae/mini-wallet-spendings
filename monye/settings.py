@@ -49,6 +49,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CUSTOM_APPS = [
+    'apps.stocktaking'
+]
+
+INSTALLED_APPS += CUSTOM_APPS
+
 ROOT_URLCONF = 'monye.urls'
 
 TEMPLATES = [
