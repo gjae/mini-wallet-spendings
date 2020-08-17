@@ -1,6 +1,8 @@
 from unittest.mock import patch
+import json
 
-from django.test import TestCase
+from django.urls import reverse
+from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.db.utils import  IntegrityError
 from django.db.models.signals import post_save
@@ -206,3 +208,72 @@ class SignalsTestCase(TestCase):
 
         platformUser = UserPlatform.objects.first()
         self.assertEqual(platformUser.current_balance, 5000)
+
+
+
+class WalletPlatformTestCase(TestCase):
+
+    def setUp(self):
+        self.client = Client()        
+        self.wallet = WalletPlatform.objects.create(
+            name='Banco De Venezuela',
+            description='Banco de venezuela',
+            type=WalletPlatform.PLATFORM_TYPE.BANCO
+        )
+
+        self.user = User.objects.create(
+            email='gjavilae@gmail.com',
+            password='123451235@@@'
+        )
+
+    
+    def test_status_code_ok(self):
+        response = self.client.get( reverse('list-wallet-platforms') )
+        self.assertEqual(response.status_code, 200)
+    
+    def test_response_json_void(self):
+        response = self.client.get( reverse('list-wallet-platforms') )
+        response_content = response.json()
+
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response_content, list)
+
+    def test_response_json_with_content(self):
+        WalletPlatform.objects.create(
+            name='Banco De Venezuela',
+            description='Cuentas en el banco de venezuela',
+            type=WalletPlatform.PLATFORM_TYPE.BANCO
+        )
+
+        response = self.client.get( reverse('list-wallet-platforms') )
+        response_data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual( len(response_data), 1 )
+        self.assertEqual(response_data[0].get('name'), 'Banco De Venezuela')
+
+    def test_create_user_platfrom(self):
+
+        """
+            Test create new user wallet, making POST request
+        """
+        response = self.client.post( 
+            reverse('create-new-wallet'),
+            {'user': 1, 'wallet': 1, 'description': 'Mi cuenta en BDV', 'account': '01020145', 'initial_balance': 40000} 
+        )
+        response_data = response.json()[0]
+        platformUser = UserPlatform.objects.first()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEquals(
+        response_data.get('wallet').get('description')
+        , 'Banco de venezuela')
+        self.assertEqual(response_data.get('description'), 'Mi cuenta en BDV')
+        self.assertEqual(platformUser.initial_balance, platformUser.current_balance)
+        self.assertEqual(platformUser.initial_balance, int(response_data.get('initial_balance')))
+
+
+    def test_create_user_platfrom_error(self):
+        response = self.client.post( reverse('create-new-wallet'), {} )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue( 'wallet' in response.json() )

@@ -22,3 +22,11 @@ def updateUserPlatformBalance(sender, instance, created, *args, **kwargs):
 
     if platform_movement is not None:
         platform_movement.save()
+
+
+@receiver(post_save, sender=UserPlatform)
+def newUserPlatformSetCurrentBalance(sender, instance, created,*args, **kw):
+
+    if created:
+        instance.current_balance = instance.initial_balance
+        instance.save()
