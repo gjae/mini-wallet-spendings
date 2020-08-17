@@ -5,4 +5,4 @@ class StocktakingConfig(AppConfig):
     name = 'stocktaking'
 
     def ready(self, *args, **kwargs):
-        from .signals import *
+        from .signals import updateUserPlatformBalance, newUserPlatformSetCurrentBalance
