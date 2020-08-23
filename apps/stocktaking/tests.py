@@ -7,6 +7,8 @@ from django.contrib.auth.models import User
 from django.db.utils import  IntegrityError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+from rest_framework.test import APIClient
 # Create your tests here.
 from .models import (WalletPlatform, UserPlatform, Movements)
 from .signals import updateUserPlatformBalance
@@ -214,7 +216,8 @@ class SignalsTestCase(TestCase):
 class WalletPlatformTestCase(TestCase):
 
     def setUp(self):
-        self.client = Client()        
+        self.client = Client()    
+        self.APIClient = APIClient()    
         self.wallet = WalletPlatform.objects.create(
             name='Banco De Venezuela',
             description='Banco de venezuela',
@@ -222,6 +225,10 @@ class WalletPlatformTestCase(TestCase):
         )
 
         self.user = User.objects.create(
+            email='gjavilae@gmail.com',
+            password='123451235@@@'
+        )
+        self.APIClient.login(
             email='gjavilae@gmail.com',
             password='123451235@@@'
         )
@@ -253,27 +260,27 @@ class WalletPlatformTestCase(TestCase):
         self.assertEqual(response_data[0].get('name'), 'Banco De Venezuela')
 
     def test_create_user_platfrom(self):
-
         """
             Test create new user wallet, making POST request
         """
-        response = self.client.post( 
+        response = self.APIClient.post( 
             reverse('create-new-wallet'),
             {'user': 1, 'wallet': 1, 'description': 'Mi cuenta en BDV', 'account': '01020145', 'initial_balance': 40000} 
         )
-        response_data = response.json()[0]
+
+        response_data = response.json()
         platformUser = UserPlatform.objects.first()
 
-        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.status_code in [200, 201])
         self.assertEquals(
         response_data.get('wallet').get('description')
         , 'Banco de venezuela')
         self.assertEqual(response_data.get('description'), 'Mi cuenta en BDV')
         self.assertEqual(platformUser.initial_balance, platformUser.current_balance)
-        self.assertEqual(platformUser.initial_balance, int(response_data.get('initial_balance')))
+        self.assertEqual(platformUser.initial_balance, float(response_data.get('initial_balance')))
 
 
     def test_create_user_platfrom_error(self):
         response = self.client.post( reverse('create-new-wallet'), {} )
-        self.assertEqual(response.status_code, 400)
+        self.assertTrue(response.status_code in [400, 403])
         self.assertTrue( 'wallet' in response.json() )

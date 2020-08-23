@@ -53,7 +53,11 @@ CUSTOM_APPS = [
     'apps.stocktaking'
 ]
 
-INSTALLED_APPS += CUSTOM_APPS
+THIRT_PARTY_APPS = [
+    'rest_framework',
+]
+
+INSTALLED_APPS += THIRT_PARTY_APPS + CUSTOM_APPS
 
 ROOT_URLCONF = 'monye.urls'
 
@@ -124,3 +128,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+
+REST_FRAMEWORK = {
+}

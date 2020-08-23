@@ -3,39 +3,38 @@ from django.http import JsonResponse
 from django.views.generic.list import ListView
 from django.views import View
 
+from rest_framework import mixins, generics, response
+
 from .models import WalletPlatform, UserPlatform
-from .serializers import WallePlatformSerializer, WalletSerializer
+from .serializers import (
+    WallePlatformSerializer, 
+    WalletSerializer, 
+    UserPlatformModelSerializer, 
+    UserPlatformModelCreateSerializer)
+
 from .forms import UserPlatformModelForm
 
-class PlatformManagement(ListView):
+class PlatformManagement(generics.ListAPIView):
 
-    model = WalletPlatform
-    paginate_by = 100
-
-    def get_queryset(self):
-        return WalletPlatform.objects.all()
+    queryset = WalletPlatform.objects.all()
+    serializer_class = WallePlatformSerializer
 
     def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = WallePlatformSerializer()
-
-        data = serializer.serialize(queryset)
-
-        return JsonResponse(data, status=200, safe=False)
+        return self.list(request, *args, **kwargs)
 
 
-class CreateUserPlatformView(View):
+class CreateUserPlatformView(generics.CreateAPIView):
 
-    http_method_names = ['post', 'options']
+    serializer_class = UserPlatformModelCreateSerializer
 
-    def post(self, request, *args, **kwrgs):
+    def perform_create(self, serializer): 
+        return serializer.save()
 
-        form = UserPlatformModelForm(request.POST)
-        if not form.is_valid():
-            return JsonResponse(form.errors, status=400)
-        obj = form.save()
+    def create(self, request, *args, **kwrgs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create( serializer )
 
-        serialize = WalletSerializer()
+        instance_serializer = UserPlatformModelSerializer(instance)
 
-
-        return JsonResponse(serialize.serialize([obj]), safe=False)
+        return response.Response(instance_serializer.data)
