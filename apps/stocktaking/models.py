@@ -6,6 +6,7 @@ from model_utils import  Choices
 from model_utils.models import TimeStampedModel, StatusModel
 
 from .exceptions import ExceptionsMessages, NotFundAvailableException
+from .managers import MovementsManager, UserPlatformManager
 # Create your models here.
 
 class WalletPlatform(TimeStampedModel):
@@ -34,6 +35,7 @@ class UserPlatform(StatusModel):
     current_balance= models.DecimalField(max_digits=23, decimal_places=2, default=0.00)
 
     last_movement = models.DateTimeField(auto_now_add=True)
+    objects = UserPlatformManager()
 
     def __str__(self):
         return '{0} - {1}'.format(self.wallet.name, self.description)
@@ -56,6 +58,8 @@ class Movements(TimeStampedModel):
 
     status = models.CharField(max_length=20, choices=MOVEMENT_STATUS, default=MOVEMENT_STATUS.completed)
     movement_type = models.CharField(max_length=15, choices=MOVEMENT_TYPE, blank=False, null=False)
+
+    objects = MovementsManager()
 
     class Meta:
         indexes = [

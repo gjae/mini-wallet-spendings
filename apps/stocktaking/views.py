@@ -1,18 +1,12 @@
-from django.core import serializers
-from django.http import JsonResponse
-from django.views.generic.list import ListView
-from django.views import View
-
 from rest_framework import mixins, generics, response
+from rest_framework import permissions
 
-from .models import WalletPlatform, UserPlatform
+from .models import WalletPlatform, UserPlatform, Movements
 from .serializers import (
     WallePlatformSerializer, 
-    WalletSerializer, 
     UserPlatformModelSerializer, 
-    UserPlatformModelCreateSerializer)
-
-from .forms import UserPlatformModelForm
+    UserPlatformModelCreateSerializer,
+    MovementSerializer)
 
 class PlatformManagement(generics.ListAPIView):
 
@@ -23,9 +17,15 @@ class PlatformManagement(generics.ListAPIView):
         return self.list(request, *args, **kwargs)
 
 
-class CreateUserPlatformView(generics.CreateAPIView):
+class UserPlatformView(generics.CreateAPIView, mixins.ListModelMixin):
 
     serializer_class = UserPlatformModelCreateSerializer
+    queryset = []
+
+    def get_queryset(self):
+        queryset = super(UserPlatformView, self).get_queryset()
+        queryset = UserPlatform.objects.get_by_user(self.request.user) # TODO
+        return queryset
 
     def perform_create(self, serializer): 
         return serializer.save()
@@ -38,3 +38,29 @@ class CreateUserPlatformView(generics.CreateAPIView):
         instance_serializer = UserPlatformModelSerializer(instance)
 
         return response.Response(instance_serializer.data)
+
+
+class UserMovementsView(generics.GenericAPIView, 
+                        mixins.CreateModelMixin,
+                        mixins.ListModelMixin):
+
+
+        permission_classes = [permissions.IsAuthenticated]
+        serializer_class = MovementSerializer
+
+        queryset = []
+        
+        def get_queryset(self, *args, **kwargs):
+            queryset = super(UserMovementsView, self).get_queryset(*args,**kwargs)
+            
+            if( self.request.user is not None ):
+                queryset = Movements.objects.get_by_user(self.request.user.id)
+            else:
+                queryset = Movements.objects.all()
+            return queryset
+
+        def get(self, request, *args, **kwargs):
+            return self.list(request, *args, **kwargs)
+
+        def post(self, request, *args, **kwargs):
+            return self.create(request, *args, **kwargs)

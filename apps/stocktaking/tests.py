@@ -8,7 +8,7 @@ from django.db.utils import  IntegrityError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 # Create your tests here.
 from .models import (WalletPlatform, UserPlatform, Movements)
 from .signals import updateUserPlatformBalance
@@ -60,7 +60,7 @@ class UserWalletRegisterTestCase(TestCase):
         self.assertEqual(platform.wallet, wallet)
 
 
-class CorrectUserPlatformTestCase(TestCase):
+class CorrectUserPlatformTestCase(APITestCase):
 
     def setUp(self):
         self.wallet = WalletPlatform.objects.create(
@@ -97,6 +97,14 @@ class CorrectUserPlatformTestCase(TestCase):
         self.assertIsInstance(wallet.wallet_belongs_user.first(), UserPlatform)
         self.assertEqual(wallet.wallet_belongs_user.first(), self.userPlatform)
         self.assertEqual('0102014502363899', wallet.wallet_belongs_user.first().account)
+
+    def test_manager(self):
+        querySetResult_usingId = UserPlatform.objects.get_by_user(self.user.id)
+        querySetResult_usingObject = UserPlatform.objects.get_by_user(self.user)
+
+        self.assertEqual(querySetResult_usingId.count(), 1)
+        self.assertEqual(querySetResult_usingObject.count(), 1)
+        self.assertEqual(querySetResult_usingId.first().id, querySetResult_usingObject.first().id)
 
 
 class MovementsTestCase(TestCase):
@@ -145,6 +153,19 @@ class MovementsTestCase(TestCase):
         self.assertIsInstance(movement, Movements)
         self.assertIsInstance(movement.platform_user, UserPlatform)
 
+    def test_manager_filter_by_user(self):
+        movement = Movements.objects.create(
+            platform_user=self.userPlatform,
+            description='Transferencia por pago de pastelito',
+            amount=50000,
+            platform_reference='090532',
+            status=Movements.MOVEMENT_STATUS.completed,
+            movement_type=Movements.MOVEMENT_TYPE.credit
+        )
+
+        querySetResult = Movements.objects.get_by_user(self.userPlatform.user.id)
+        self.assertEqual(querySetResult.count(), 1)
+        self.assertEqual(querySetResult.first().platform_user.user.id, self.userPlatform.user.id)
 
 class SignalsTestCase(TestCase):
 
@@ -284,3 +305,73 @@ class WalletPlatformTestCase(TestCase):
         response = self.client.post( reverse('create-new-wallet'), {} )
         self.assertTrue(response.status_code in [400, 403])
         self.assertTrue( 'wallet' in response.json() )
+
+
+class MovementsAPITestCase(APITestCase):
+    def setUp(self):
+        self.wallet = WalletPlatform.objects.create(
+            name='Banco De Venezuela',
+            description='Banco de venezuela',
+            type=WalletPlatform.PLATFORM_TYPE.BANCO
+        )
+        self.user = User.objects.create(
+            email='gjavilae@gmail.com',
+            password='123451235@@@'
+        )
+
+        self.userPlatform = UserPlatform.objects.create(
+            wallet=self.wallet,
+            user=self.user,
+            description='Mi cuenta de banco de venezuela',
+            account='0102014502363899'
+        )
+
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_list_all_movements(self):
+        movement = Movements.objects.create(
+            platform_user=self.userPlatform,
+            description='Transferencia por pago de pastelito',
+            amount=50000,
+            platform_reference='090532',
+            status=Movements.MOVEMENT_STATUS.completed,
+            movement_type=Movements.MOVEMENT_TYPE.credit
+        )
+
+        movement = Movements.objects.create(
+            platform_user=self.userPlatform,
+            description='Transferencia por pago de pastelito',
+            amount=5000,
+            platform_reference='090532',
+            status=Movements.MOVEMENT_STATUS.completed,
+            movement_type=Movements.MOVEMENT_TYPE.debit
+        )
+        response = self.client.get( reverse('movements') )
+
+        self.assertEqual( Movements.objects.all().count() , 2 )
+        self.assertTrue(response.status_code in [200, 202, 91])
+        self.assertEqual( len( response.json() ) , 2 )
+
+    def test_create_new_movement(self): 
+        movement = Movements.objects.create(
+            platform_user=self.userPlatform,
+            description='Transferencia por pago de pastelito',
+            amount=50000,
+            platform_reference='090532',
+            status=Movements.MOVEMENT_STATUS.completed,
+            movement_type=Movements.MOVEMENT_TYPE.credit
+        )
+        data = {
+            'platform_user': 1, 
+            "description": "Pago realizado a alguien", 
+            "amount": 10000,
+            "platform_reference": '00901903',
+            "status": Movements.MOVEMENT_STATUS.completed,
+            "movement_type": Movements.MOVEMENT_TYPE.debit
+        }
+
+        response = self.client.post(reverse('movements'), data, format='json')
+
+        self.assertTrue( response.status_code in [200, 201] ,msg='Status_code es diferente a 200 y 201' )
+        self.assertEqual(response.json(), data)

@@ -1,7 +1,6 @@
-from django.core.serializers.python import Serializer
 from rest_framework import serializers
 
-from .models import WalletPlatform,UserPlatform
+from .models import WalletPlatform,UserPlatform, Movements
 
 class WallePlatformSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,18 +21,7 @@ class UserPlatformModelCreateSerializer(serializers.ModelSerializer):
         fields = ['user', 'wallet', 'description', 'account', 'initial_balance']
 
 
-class WalletSerializer(Serializer):
-
-    def end_object(self, record):
-        self.objects.append({
-            'id': record.id,
-            'account': record.account,
-            'initial_balance': record.initial_balance,
-            'current_balance': record.current_balance,
-            'description': record.description,
-            'wallet': {
-                'id': record.wallet.id,
-                'name': record.wallet.name,
-                'description': record.wallet.description
-            }
-        })
+class MovementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Movements
+        fields = ['platform_user', 'description', 'amount', 'platform_reference', 'status', 'movement_type']
