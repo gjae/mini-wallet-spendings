@@ -285,7 +285,7 @@ class WalletPlatformTestCase(TestCase):
             Test create new user wallet, making POST request
         """
         response = self.APIClient.post( 
-            reverse('create-new-wallet'),
+            reverse('user-wallet'),
             {'user': 1, 'wallet': 1, 'description': 'Mi cuenta en BDV', 'account': '01020145', 'initial_balance': 40000} 
         )
 
@@ -302,7 +302,7 @@ class WalletPlatformTestCase(TestCase):
 
 
     def test_create_user_platfrom_error(self):
-        response = self.client.post( reverse('create-new-wallet'), {} )
+        response = self.client.post( reverse('user-wallet'), {} )
         self.assertTrue(response.status_code in [400, 403])
         self.assertTrue( 'wallet' in response.json() )
 
@@ -375,3 +375,59 @@ class MovementsAPITestCase(APITestCase):
 
         self.assertTrue( response.status_code in [200, 201] ,msg='Status_code es diferente a 200 y 201' )
         self.assertEqual(response.json(), data)
+
+
+class WalletAPITestCase(APITestCase):
+    def setUp(self):
+        self.wallet = WalletPlatform.objects.create(
+            name='Banco De Venezuela',
+            description='Banco de venezuela',
+            type=WalletPlatform.PLATFORM_TYPE.BANCO
+        )
+        self.user = User.objects.create(
+            email='gjavilae@gmail.com',
+            password='123451235@@@'
+        )
+
+        self.userPlatform = UserPlatform.objects.create(
+            wallet=self.wallet,
+            user=self.user,
+            description='Mi cuenta de banco de venezuela',
+            account='0102014502363899'
+        )
+
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+
+    def test_list_wallets(self):
+        UserPlatform.objects.create(
+            wallet=self.wallet,
+            user=self.user,
+            description='Mi segunda cuenta de banco de venezuela',
+            account='0102014502363898'
+        )
+
+        response = self.client.get( reverse('user-wallet') )
+        response_data = response.json()
+        self.assertEquals(response.status_code, 200)
+        self.assertEqual( len(response_data), 2 )
+        self.assertEqual( response_data[0].get('account'), '0102014502363899' )
+        self.assertEqual( response_data[1].get('description'), 'Mi segunda cuenta de banco de venezuela')
+
+    def test_retrieve_wallet(self):
+        movement = Movements.objects.create(
+            platform_user=self.userPlatform,
+            description='Transferencia por pago de pastelito',
+            amount=50000,
+            platform_reference='090532',
+            status=Movements.MOVEMENT_STATUS.completed,
+            movement_type=Movements.MOVEMENT_TYPE.credit
+        )
+        response = self.client.get(reverse('retrieve-wallet', kwargs={'account':'0102014502363899'}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json().get('wallet').get('name'), self.wallet.name)
+
+        self.assertEquals( len(response.json().get('user_earnings')), 1)
+        self.assertEquals( response.json().get('user_earnings')[0].get('description'), 'Transferencia por pago de pastelito' )

@@ -6,7 +6,8 @@ from .serializers import (
     WallePlatformSerializer, 
     UserPlatformModelSerializer, 
     UserPlatformModelCreateSerializer,
-    MovementSerializer)
+    MovementSerializer,
+    UserPlatformRetrieveSerializer)
 
 class PlatformManagement(generics.ListAPIView):
 
@@ -17,9 +18,10 @@ class PlatformManagement(generics.ListAPIView):
         return self.list(request, *args, **kwargs)
 
 
-class UserPlatformView(generics.CreateAPIView, mixins.ListModelMixin):
+class UserPlatformView(generics.CreateAPIView, 
+                        mixins.ListModelMixin):
 
-    serializer_class = UserPlatformModelCreateSerializer
+    serializer_class = UserPlatformModelCreateSerializer 
     queryset = []
 
     def get_queryset(self):
@@ -38,6 +40,25 @@ class UserPlatformView(generics.CreateAPIView, mixins.ListModelMixin):
         instance_serializer = UserPlatformModelSerializer(instance)
 
         return response.Response(instance_serializer.data)
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args,**kwargs)
+
+
+class UserPlatformRetrieve(generics.RetrieveAPIView):
+
+    serializer_class = UserPlatformRetrieveSerializer
+    lookup_field = 'account'
+    queryset = []
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = super(UserPlatformRetrieve, self).get_queryset()
+        queryset = UserPlatform.objects.get_by_user(self.request.user)
+        return queryset
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
 
 
 class UserMovementsView(generics.GenericAPIView, 

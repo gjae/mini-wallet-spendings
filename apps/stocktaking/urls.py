@@ -1,14 +1,16 @@
-from django.urls import path
+from django.urls import path, re_path
 from django.core import serializers
 
 from .views import (
     PlatformManagement, 
     UserPlatformView,
-    UserMovementsView
+    UserMovementsView,
+    UserPlatformRetrieve
 )
 
 urlpatterns = [
     path('', PlatformManagement.as_view(), name='list-wallet-platforms'),
-    path('create-wallet/', UserPlatformView.as_view(), name='create-new-wallet'),
+    path('wallets/', UserPlatformView.as_view(), name='user-wallet'),
+    path('wallets/<str:account>/', UserPlatformRetrieve.as_view(), name='retrieve-wallet'),
     path('movements/', UserMovementsView.as_view(), name='movements'),
 ]
