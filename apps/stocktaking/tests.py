@@ -234,11 +234,10 @@ class SignalsTestCase(TestCase):
 
 
 
-class WalletPlatformTestCase(TestCase):
+class WalletPlatformTestCase(APITestCase):
 
     def setUp(self):
-        self.client = Client()    
-        self.APIClient = APIClient()    
+        self.client = APIClient()    
         self.wallet = WalletPlatform.objects.create(
             name='Banco De Venezuela',
             description='Banco de venezuela',
@@ -249,10 +248,7 @@ class WalletPlatformTestCase(TestCase):
             email='gjavilae@gmail.com',
             password='123451235@@@'
         )
-        self.APIClient.login(
-            email='gjavilae@gmail.com',
-            password='123451235@@@'
-        )
+        self.client.force_authenticate(user=self.user)
 
     
     def test_status_code_ok(self):
@@ -284,7 +280,7 @@ class WalletPlatformTestCase(TestCase):
         """
             Test create new user wallet, making POST request
         """
-        response = self.APIClient.post( 
+        response = self.client.post( 
             reverse('user-wallet'),
             {'user': 1, 'wallet': 1, 'description': 'Mi cuenta en BDV', 'account': '01020145', 'initial_balance': 40000} 
         )

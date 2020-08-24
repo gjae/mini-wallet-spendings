@@ -23,6 +23,7 @@ class UserPlatformView(generics.CreateAPIView,
 
     serializer_class = UserPlatformModelCreateSerializer 
     queryset = []
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         queryset = super(UserPlatformView, self).get_queryset()
