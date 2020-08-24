@@ -1,3 +1,4 @@
+import base64
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -21,7 +22,8 @@ class UserAuthenticationTestCase(APITestCase):
             name='Test Application',
             redirect_uris='http://localhost:8000',
             user=self.test_user,
-            client_type=Application.GRANT_AUTHORIZATION_CODE,
+            authorization_grant_type=Application.GRANT_PASSWORD,
+            client_type=Application.CLIENT_PUBLIC,
         )
         self.access_token = AccessToken.objects.create(
             user=self.test_user,
@@ -72,7 +74,7 @@ class UserAuthenticationTestCase(APITestCase):
 
         self.assertEqual(response.status_code, 401, msg='This test should fail because API Token is incorrect')
 
-    
+
     def test_oauth_token_on_create_movement(self):
         movement = Movements.objects.create(
             platform_user=self.userPlatform,
@@ -97,3 +99,19 @@ class UserAuthenticationTestCase(APITestCase):
 
         self.assertTrue( response.status_code in [200, 201] ,msg='Status_code es diferente a 200 y 201' )
         self.assertEqual(response.json(), data)
+
+    def test_login_and_retrieve_access_token(self):
+
+        basic_auth_user = '{0}:{1}'.format(self.application.client_id, self.application.client_secret)
+        basic_auth_user = base64.b64encode(basic_auth_user.encode('utf-8'))
+        response = self.client.post(
+            reverse("oauth2_provider:token"),
+            data={'username': 'test_user', 
+                'password': '123456', 
+                'grant_type': 'password'},
+            HTTP_AUTHORIZATION= 'Basic '+basic_auth_user.decode('utf-8')
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue('access_token' in response.json())
+        self.assertTrue('refresh_token' in response.json())
